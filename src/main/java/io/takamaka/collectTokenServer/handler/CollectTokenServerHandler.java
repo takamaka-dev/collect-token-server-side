@@ -29,6 +29,8 @@ import org.springframework.web.reactive.function.server.RouterFunctions;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
 import reactor.core.publisher.Mono;
+import io.takamaka.wallet.utils.FixedParameters;
+import java.security.NoSuchProviderException;
 
 /**
  *
@@ -46,25 +48,71 @@ public class CollectTokenServerHandler {
     }
 
     public Mono<ServerResponse> checkResult(ServerRequest serverRequest) {
-        return ServerResponse.ok()
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue("Hello world!");
+        ErrorMessageBean errorMessageBean = new ErrorMessageBean();
+
+        return serverRequest.bodyToMono(String.class).flatMap((flatBody) -> {
+            flatBody = URLDecoder.decode(flatBody, StandardCharsets.UTF_8);
+            if (TkmTextUtils.isNullOrBlank(flatBody)) {
+                log.info("null body");
+            }
+            String trimmedFlatReq = flatBody.trim();
+            if (trimmedFlatReq.contains("\u0000")) {
+                log.info("found null character, exiting...");
+                errorMessageBean.getErrors().add("found null character, exiting...");
+            }
+            log.info("the request " + trimmedFlatReq);
+            MultiValueMap<String, String> resMap = SerialUtils.parseBody(flatBody, errorMessageBean);
+            
+            String solutionInt = resMap.getFirst("interoSoluzione");
+            if (TkmTextUtils.isNullOrBlank(solutionInt)) {
+                log.info("solution int is empty");
+                errorMessageBean.getErrors().add("solution int is empty");
+            }
+            
+            String challenge = resMap.getFirst("challenge");
+            
+            if (TkmTextUtils.isNullOrBlank(challenge)) {
+                log.info("challenge is empty");
+                errorMessageBean.getErrors().add("challenge is empty");
+            }
+            
+            if (!errorMessageBean.getErrors().isEmpty()) {
+                return ServerResponse.badRequest().build();
+            }
+            
+            
+            boolean check = false;
+            byte[] hash256Byte;
+            try {
+                hash256Byte = TkmSignUtils.Hash256Byte((solutionInt + challenge).getBytes(), FixedParameters.HASH_256_ALGORITHM);
+                String fromBytesToHexString = ProjectHelper.fromBytesToHexString(hash256Byte);
+                check = fromBytesToHexString.startsWith(PropUtils.i().getTokenServerDifficulty());
+            } catch (NoSuchAlgorithmException | NoSuchProviderException ex) {
+                Logger.getLogger(CollectTokenServerHandler.class.getName()).log(Level.SEVERE, null, ex);
+            }
+            
+            
+            if (check)
+                return ServerResponse.ok().bodyValue("OK");
+            
+            return ServerResponse.badRequest().bodyValue("Wrong solution...");
+        });
+
     }
 
-    
     public Mono<ServerResponse> requireChallenge(ServerRequest serverRequest) {
         ErrorMessageBean errorMessageBean = new ErrorMessageBean();
 
         String secret = PropUtils.i().getTokenServerSecret();
         int randomNumberInRange = ProjectHelper.getRandomNumberInRange(1, 10);
-        
-        ChallengeResponseBean challengeResponseBean = 
-                new ChallengeResponseBean(
+
+        ChallengeResponseBean challengeResponseBean
+                = new ChallengeResponseBean(
                         PropUtils.i().getTokenServerDifficulty(),
                         randomNumberInRange,
                         ""
                 );
-        
+
         return serverRequest.bodyToMono(String.class).flatMap((flatBody) -> {
             flatBody = URLDecoder.decode(flatBody, StandardCharsets.UTF_8);
             if (TkmTextUtils.isNullOrBlank(flatBody)) {
@@ -84,11 +132,11 @@ public class CollectTokenServerHandler {
             try {
                 byte[] passwordDigest = TkmSignUtils.PWHash(
                         PropUtils.i().getTokenServerSecret() + PropUtils.i().getTokenServerDifficulty() + walletAddress, PropUtils.i().getTokenServerSecret(), randomNumberInRange, 256);
-            
+
                 String challenge = TkmSignUtils.fromByteArrayToB64URL(passwordDigest);
-                
+
                 challengeResponseBean.setChallenge(challenge);
-                
+
             } catch (HashEncodeException | HashAlgorithmNotFoundException | HashProviderNotFoundException | InvalidKeySpecException | NoSuchAlgorithmException ex) {
                 Logger.getLogger(CollectTokenServerHandler.class.getName()).log(Level.SEVERE, null, ex);
             }

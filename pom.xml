@@ -122,7 +122,12 @@
             <version>2.7.4</version>
             <type>jar</type>
         </dependency>
-        
+        <dependency>
+            <groupId>io.takamaka.wallet</groupId>
+            <artifactId>takamaka-core-wallet</artifactId>
+            <version>0.9.2.1</version>
+            <type>jar</type>
+        </dependency>
     </dependencies>
     
     <build>
