@@ -26,6 +26,11 @@ import org.springframework.core.io.ResourceLoader;
 public class PropUtils {
 
     private final int retries;
+    private final String prodApi;
+    private final String testApi;
+    private final Boolean targetingProd;
+    private final String prodBalanceOfApi;
+    private final String testBalanceOfApi;
     private final String tokenServerAddressReference;
     private final String tokenServerPassword;
     private final String tokenServerPasswordTest;
@@ -44,10 +49,12 @@ public class PropUtils {
         String property = initalSettings.getProperty("tkm.client.max-retries");
         retries = Integer.parseInt(property);
         log.info("readed prop " + property);
-        property = initalSettings.getProperty("prod.tkm.node.api");
-        property = initalSettings.getProperty("test.tkm.node.api");
+        prodApi = initalSettings.getProperty("prod.tkm.node.api");
+        testApi = initalSettings.getProperty("test.tkm.node.api");
+        prodBalanceOfApi = initalSettings.getProperty("prod.tkm.node.api.balanceof");
+        testBalanceOfApi = initalSettings.getProperty("test.tkm.node.api.balanceof");
+        targetingProd = Boolean.parseBoolean(property);
         tokenServerAddressReference = initalSettings.getProperty("tkm.tokenserver.address.reference");
-        property = initalSettings.getProperty("tkm.api.targeting-prod");
         tokenServerPassword = initalSettings.getProperty("tkm.tokenserver.password");
         tokenServerPasswordTest = initalSettings.getProperty("tkm.tokenserver.password.test");
         tokenServerWalletName = initalSettings.getProperty("tkm.tokenserver.wallet.name");
@@ -63,6 +70,14 @@ public class PropUtils {
 
     public static PropUtils i() {
         return PU.P;
+    }
+    
+    public String getCurrentApiBase() {
+        return targetingProd ? prodApi : testApi;
+    }
+    
+    public String getCurrentApiBalanceOf() {
+        return targetingProd ? prodBalanceOfApi : testBalanceOfApi;
     }
     
     public String getTokenServerDifficulty() {
