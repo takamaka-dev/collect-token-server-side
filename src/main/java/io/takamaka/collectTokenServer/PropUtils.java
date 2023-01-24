@@ -40,7 +40,7 @@ public class PropUtils {
     private final String tokenServerSecret;
     private final String tokenServerDifficulty;
 
-    public static final String WALLET_PARAM_STRING = "^addr=[0-9a-zA-Z-_.]+$";
+    public static final String WALLET_PARAM_STRING = "^[0-9a-zA-Z-_.]+$";
     public static final Pattern WALLET_PARAM_PATTERN = Pattern
             .compile(WALLET_PARAM_STRING);
     

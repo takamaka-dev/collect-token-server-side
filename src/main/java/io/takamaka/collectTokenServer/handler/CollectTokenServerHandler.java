@@ -62,25 +62,24 @@ public class CollectTokenServerHandler {
             }
             log.info("the request " + trimmedFlatReq);
             MultiValueMap<String, String> resMap = SerialUtils.parseBody(flatBody, errorMessageBean);
-            
+
             String solutionInt = resMap.getFirst("interoSoluzione");
             if (TkmTextUtils.isNullOrBlank(solutionInt)) {
                 log.info("solution int is empty");
                 errorMessageBean.getErrors().add("solution int is empty");
             }
-            
+
             String challenge = resMap.getFirst("challenge");
-            
+
             if (TkmTextUtils.isNullOrBlank(challenge)) {
                 log.info("challenge is empty");
                 errorMessageBean.getErrors().add("challenge is empty");
             }
-            
+
             if (!errorMessageBean.getErrors().isEmpty()) {
                 return ServerResponse.badRequest().build();
             }
-            
-            
+
             boolean check = false;
             byte[] hash256Byte;
             try {
@@ -90,11 +89,11 @@ public class CollectTokenServerHandler {
             } catch (NoSuchAlgorithmException | NoSuchProviderException ex) {
                 Logger.getLogger(CollectTokenServerHandler.class.getName()).log(Level.SEVERE, null, ex);
             }
-            
-            
-            if (check)
+
+            if (check) {
                 return ServerResponse.ok().bodyValue("OK");
-            
+            }
+
             return ServerResponse.badRequest().bodyValue("Wrong solution...");
         });
 
@@ -128,6 +127,12 @@ public class CollectTokenServerHandler {
             MultiValueMap<String, String> resMap = SerialUtils.parseBody(flatBody, errorMessageBean);
 
             String walletAddress = resMap.getFirst("walletAddress");
+            String trimWalletAddress = walletAddress.trim();
+            if (PropUtils.WALLET_PARAM_PATTERN.matcher(trimWalletAddress).find()) {
+                walletAddress = trimWalletAddress;
+            } else {
+                return ServerResponse.badRequest().bodyValue("Bad request");
+            }
 
             try {
                 byte[] passwordDigest = TkmSignUtils.PWHash(
