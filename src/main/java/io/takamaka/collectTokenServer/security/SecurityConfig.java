@@ -30,9 +30,11 @@ public class SecurityConfig {
                 )
                 .authenticated()
                 .pathMatchers("/helloworld",
-                    "/requirechallenge",
-                    "/checkresult"
-                        )
+                        "/requirechallenge",
+                        "/checkresult",
+                        "/checkclamingsolutions",
+                        "/claimsolutions"
+                )
                 .permitAll()
                 .and().csrf((csrf) -> csrf.disable())
                 .httpBasic();

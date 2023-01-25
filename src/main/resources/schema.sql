@@ -36,7 +36,7 @@ CREATE TABLE collecttokenserverschema.token_collected (
     challenge_id SERIAL not null,
     solution_string TEXT,
     sent_challenge TEXT,
-    PRIMARY KEY(wallet_address, challenge_id)
+    PRIMARY KEY(challenge_id)
 );
 
 CREATE TABLE collecttokenserverschema.pay_sent (

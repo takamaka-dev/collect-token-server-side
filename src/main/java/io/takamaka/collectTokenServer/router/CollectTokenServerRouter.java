@@ -42,6 +42,28 @@ public class CollectTokenServerRouter {
 
     }
     
+    @Bean
+    public RouterFunction<ServerResponse> claimSolutions(CollectTokenServerHandler collectTokenHandler) {
+        return route()
+                .nest(path("/claimsolutions"),
+                        (builder) -> {
+                            builder
+                                    .POST("", (request) -> collectTokenHandler.claimSolutions(request));
+                        }).build();
+
+    }
+    
+    @Bean
+    public RouterFunction<ServerResponse> checkClamingSolutions(CollectTokenServerHandler collectTokenHandler) {
+        return route()
+                .nest(path("/checkclamingsolutions"),
+                        (builder) -> {
+                            builder
+                                    .POST("", (request) -> collectTokenHandler.checkClamingSolutions(request));
+                        }).build();
+
+    }
+    
     
     @Bean
     public RouterFunction<ServerResponse> checkResult(CollectTokenServerHandler collectTokenHandler) {
