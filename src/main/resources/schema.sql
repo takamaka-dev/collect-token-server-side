@@ -31,22 +31,55 @@ COMMENT ON SCHEMA "collecttokenserverschema"
 GRANT ALL ON SCHEMA "collecttokenserverschema" TO collecttokenserverruser WITH GRANT OPTION;
 
 
-CREATE TABLE collecttokenserverschema.token_collected (
-    wallet_address VARCHAR(44),
-    challenge_id SERIAL not null,
-    solution_string TEXT,
-    sent_challenge TEXT,
-    PRIMARY KEY(challenge_id)
-);
+-- Table: collecttokenserverschema.pay_sent
 
-CREATE TABLE collecttokenserverschema.pay_sent (
-    wallet_address VARCHAR(44) PRIMARY KEY,
-    number_of_pay INTEGER NOT NULL DEFAULT 0
-);
+-- DROP TABLE IF EXISTS collecttokenserverschema.pay_sent;
 
-CREATE VIEW collecttokenserverschema.solutions_per_addr AS
-select wallet_address, count(wallet_address) as number_of_solutions
-from collecttokenserverschema.token_collected group by wallet_address
+CREATE TABLE IF NOT EXISTS collecttokenserverschema.pay_sent
+(
+    wallet_address character varying(44) COLLATE pg_catalog."default" NOT NULL,
+    number_of_pay integer NOT NULL DEFAULT 0,
+    CONSTRAINT pay_sent_pkey PRIMARY KEY (wallet_address)
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS collecttokenserverschema.pay_sent
+    OWNER to collecttokenserverruser;
+
+-- Table: collecttokenserverschema.token_collected
+
+-- DROP TABLE IF EXISTS collecttokenserverschema.token_collected;
+
+CREATE TABLE IF NOT EXISTS collecttokenserverschema.token_collected
+(
+    wallet_address character varying(44) COLLATE pg_catalog."default",
+    challenge_id integer NOT NULL DEFAULT nextval('collecttokenserverschema.token_collected_challenge_id_seq'::regclass),
+    solution_string text COLLATE pg_catalog."default",
+    sent_challenge text COLLATE pg_catalog."default",
+    pay_sent boolean DEFAULT false,
+    CONSTRAINT token_collected_pkey PRIMARY KEY (challenge_id)
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS collecttokenserverschema.token_collected
+    OWNER to collecttokenserverruser;
+
+
+-- View: collecttokenserverschema.solutions_per_addr
+
+-- DROP VIEW collecttokenserverschema.solutions_per_addr;
+
+CREATE OR REPLACE VIEW collecttokenserverschema.solutions_per_addr
+ AS
+ SELECT token_collected.wallet_address,
+    count(token_collected.wallet_address) AS number_of_solutions
+   FROM collecttokenserverschema.token_collected
+  GROUP BY token_collected.wallet_address;
+
+ALTER TABLE collecttokenserverschema.solutions_per_addr
+    OWNER TO collecttokenserverruser;
 
 -- il n_shards_requested sarà: 15 * n_pay * 2
 -- se wallet address not exists in collecttokenserverschema.pay_sent then n_shards_requested = 15
