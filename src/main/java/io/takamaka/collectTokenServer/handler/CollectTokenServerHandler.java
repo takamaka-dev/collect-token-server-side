@@ -4,7 +4,6 @@
  */
 package io.takamaka.collectTokenServer.handler;
 
-
 import io.takamaka.collectTokenServer.PropUtils;
 import io.takamaka.collectTokenServer.SerialUtils;
 import io.takamaka.collectTokenServer.domain.ChallengeResponseBean;
@@ -61,13 +60,13 @@ public class CollectTokenServerHandler {
     TokenCollectedRepository tokenCollectedRepository;
     public static final String SOURCE_WALLET_NAME = "my_example_wallet_source";
     public static final String SOURCE_WALLET_PASSWORD = "my_example_wallet_source_password";
-    
+
     public Mono<ServerResponse> helloworld(ServerRequest serverRequest) {
         return ServerResponse.ok()
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue("Hello world!");
     }
-    
+
     public Mono<ServerResponse> claimSolutions(ServerRequest serverRequest) {
         ErrorMessageBean errorMessageBean = new ErrorMessageBean();
         return serverRequest.bodyToMono(String.class).flatMap((flatBody) -> {
@@ -81,7 +80,7 @@ public class CollectTokenServerHandler {
             }
             log.info("the request " + trimmedFlatReq);
             MultiValueMap<String, String> resMap = SerialUtils.parseBody(flatBody, errorMessageBean);
-            
+
             String walletAddress = resMap.getFirst("walletAddress");
 
             final String trimWalletAddress = walletAddress.trim();
@@ -91,49 +90,17 @@ public class CollectTokenServerHandler {
                 errorMessageBean.getErrors().add("wrong format wallet address");
                 log.info("wrong format wallet address");
             }
-            
-            return tokenCollectedRepository.updateClamingSolutions(walletAddress).flatMap((t) -> {
-                return ServerResponse.ok().bodyValue("OK");
-            });
-            
-        });
-    }
-    
-    public Mono<ServerResponse> checkClamingSolutions(ServerRequest serverRequest) {
-        ErrorMessageBean errorMessageBean = new ErrorMessageBean();
-        final BigInteger oneTKRValue = TkmTK.unitTK(1);
-        final BigInteger oneTKGValue = TkmTK.unitTK(1);
-        
-        return serverRequest.bodyToMono(String.class).flatMap((flatBody) -> {
-            if (TkmTextUtils.isNullOrBlank(flatBody)) {
-                log.info("null body");
-            }
-            String trimmedFlatReq = flatBody.trim();
-            if (trimmedFlatReq.contains("\u0000")) {
-                log.info("found null character, exiting...");
-                errorMessageBean.getErrors().add("found null character, exiting...");
-            }
-            log.info("the request " + trimmedFlatReq);
-            MultiValueMap<String, String> resMap = SerialUtils.parseBody(flatBody, errorMessageBean);
-            
-            String walletAddress = resMap.getFirst("walletAddress");
 
-            final String trimWalletAddress = walletAddress.trim();
-            if (PropUtils.WALLET_PARAM_PATTERN.matcher(trimWalletAddress).find()) {
-                walletAddress = trimWalletAddress;
-            } else {
-                errorMessageBean.getErrors().add("wrong format wallet address");
-                log.info("wrong format wallet address");
-            }
-            
             return tokenCollectedRepository.getClamingSolutions(walletAddress).flatMap((numberOfSol) -> {
                 double tkrScale = PropUtils.i().getTkrReward();
                 double tkgScale = PropUtils.i().getTkgReward();
-                
-                double ratioShardCompleted = 
-                        numberOfSol.doubleValue() / 
-                        PropUtils.i().getShardsGoal();
-                
+                BigInteger oneTKRValue = TkmTK.unitTK("1");
+                BigInteger oneTKGValue = TkmTK.unitTK("1");
+
+                double ratioShardCompleted
+                        = numberOfSol.doubleValue()
+                        / PropUtils.i().getShardsGoal();
+
                 final BigInteger tkrAmount = oneTKRValue
                         .multiply(
                                 new BigInteger(
@@ -149,7 +116,7 @@ public class CollectTokenServerHandler {
                                 new BigInteger(
                                         String.valueOf(ratioShardCompleted))
                         );
-                
+
                 try {
                     doPay(
                             trimWalletAddress,
@@ -163,17 +130,50 @@ public class CollectTokenServerHandler {
                 } catch (WalletException | IOException ex) {
                     Logger.getLogger(CollectTokenServerHandler.class.getName()).log(Level.SEVERE, null, ex);
                 }
-                
+                return tokenCollectedRepository.updateClamingSolutions(trimWalletAddress).flatMap((t) -> {
+                    return ServerResponse.ok().bodyValue("OK");
+                });
+            });
+
+        });
+    }
+
+    public Mono<ServerResponse> checkClamingSolutions(ServerRequest serverRequest) {
+        ErrorMessageBean errorMessageBean = new ErrorMessageBean();
+
+        return serverRequest.bodyToMono(String.class).flatMap((flatBody) -> {
+            if (TkmTextUtils.isNullOrBlank(flatBody)) {
+                log.info("null body");
+            }
+            String trimmedFlatReq = flatBody.trim();
+            if (trimmedFlatReq.contains("\u0000")) {
+                log.info("found null character, exiting...");
+                errorMessageBean.getErrors().add("found null character, exiting...");
+            }
+            log.info("the request " + trimmedFlatReq);
+            MultiValueMap<String, String> resMap = SerialUtils.parseBody(flatBody, errorMessageBean);
+
+            String walletAddress = resMap.getFirst("walletAddress");
+
+            final String trimWalletAddress = walletAddress.trim();
+            if (PropUtils.WALLET_PARAM_PATTERN.matcher(trimWalletAddress).find()) {
+                walletAddress = trimWalletAddress;
+            } else {
+                errorMessageBean.getErrors().add("wrong format wallet address");
+                log.info("wrong format wallet address");
+            }
+
+            return tokenCollectedRepository.getClamingSolutions(walletAddress).flatMap((numberOfSol) -> {
                 return ServerResponse.ok().bodyValue(numberOfSol.toString());
             });
         });
     }
-    
+
     public static final void doPay(
             String fromAddress,
-            String toAddress, 
+            String toAddress,
             String networkTarget,
-            BigInteger tkrAmount, 
+            BigInteger tkrAmount,
             BigInteger tkgAmount) throws UnlockWalletException, WalletException, ProtocolException, IOException {
         final InstanceWalletKeystoreInterface iwkEDSource = new InstanceWalletKeyStoreBCED25519(SOURCE_WALLET_NAME, SOURCE_WALLET_PASSWORD);
         final String publicKeySource = iwkEDSource.getPublicKeyAtIndexURL64(0);
@@ -220,7 +220,7 @@ public class CollectTokenServerHandler {
                 log.info("solution int is empty");
                 errorMessageBean.getErrors().add("solution int is empty");
             }
-            
+
             String walletAddress = resMap.getFirst("walletAddress");
 
             final String trimWalletAddress = walletAddress.trim();
@@ -253,12 +253,12 @@ public class CollectTokenServerHandler {
             }
 
             if (check) {
-                return tokenCollectedRepository.saveTokenCollected(walletAddress, 
+                return tokenCollectedRepository.saveTokenCollected(walletAddress,
                         challenge,
                         solutionInt).flatMap((savedRow) -> {
                             return ServerResponse.ok().bodyValue("OK");
-                });
-                
+                        });
+
             }
 
             return ServerResponse.badRequest().bodyValue("Wrong solution...");
@@ -268,27 +268,27 @@ public class CollectTokenServerHandler {
 
     public Mono<ServerResponse> loadWithChallengeId(int challengeId, String walletAddress) {
         ChallengeResponseBean challengeResponseBean
-                        = new ChallengeResponseBean(
-                                PropUtils.i().getTokenServerDifficulty(),
-                                challengeId,
-                                ""
-                        );
+                = new ChallengeResponseBean(
+                        PropUtils.i().getTokenServerDifficulty(),
+                        challengeId,
+                        ""
+                );
 
-            try {
-                byte[] passwordDigest = TkmSignUtils.PWHash(
-                        PropUtils.i().getTokenServerSecret() + PropUtils.i().getTokenServerDifficulty() + walletAddress, PropUtils.i().getTokenServerSecret(), challengeId, 256);
+        try {
+            byte[] passwordDigest = TkmSignUtils.PWHash(
+                    PropUtils.i().getTokenServerSecret() + PropUtils.i().getTokenServerDifficulty() + walletAddress, PropUtils.i().getTokenServerSecret(), challengeId, 256);
 
-                String challenge = TkmSignUtils.fromByteArrayToB64URL(passwordDigest);
+            String challenge = TkmSignUtils.fromByteArrayToB64URL(passwordDigest);
 
-                challengeResponseBean.setChallenge(challenge);
+            challengeResponseBean.setChallenge(challenge);
 
-            } catch (HashEncodeException | HashAlgorithmNotFoundException | HashProviderNotFoundException | InvalidKeySpecException | NoSuchAlgorithmException ex) {
-                Logger.getLogger(CollectTokenServerHandler.class.getName()).log(Level.SEVERE, null, ex);
-            }
+        } catch (HashEncodeException | HashAlgorithmNotFoundException | HashProviderNotFoundException | InvalidKeySpecException | NoSuchAlgorithmException ex) {
+            Logger.getLogger(CollectTokenServerHandler.class.getName()).log(Level.SEVERE, null, ex);
+        }
 
-            return ServerResponse.ok().contentType(MediaType.APPLICATION_JSON).bodyValue(challengeResponseBean);
+        return ServerResponse.ok().contentType(MediaType.APPLICATION_JSON).bodyValue(challengeResponseBean);
     }
-    
+
     public Mono<ServerResponse> requireChallenge(ServerRequest serverRequest) {
         ErrorMessageBean errorMessageBean = new ErrorMessageBean();
 
