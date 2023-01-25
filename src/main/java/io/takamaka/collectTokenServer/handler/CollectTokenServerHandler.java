@@ -32,6 +32,7 @@ import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
 import reactor.core.publisher.Mono;
 import io.takamaka.wallet.utils.FixedParameters;
+import java.math.BigInteger;
 import java.security.NoSuchProviderException;
 
 /**
@@ -108,10 +109,19 @@ public class CollectTokenServerHandler {
             }
             
             return tokenCollectedRepository.getClamingSolutions(walletAddress).flatMap((numberOfSol) -> {
-                String toString = numberOfSol.toString();
+                
                 return ServerResponse.ok().bodyValue(numberOfSol.toString());
             });
         });
+    }
+    
+    public static final String doPay(
+            String fromAddress,
+            String toAddress, 
+            String networkTarget,
+            BigInteger tkrAmount, 
+            BigInteger tkgAmount) {
+        return "";
     }
 
     public Mono<ServerResponse> checkResult(ServerRequest serverRequest) {
