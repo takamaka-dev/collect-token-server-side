@@ -39,11 +39,14 @@ public class PropUtils {
     private final Properties initalSettings;
     private final String tokenServerSecret;
     private final String tokenServerDifficulty;
+    private final double tkrReward;
+    private final double tkgReward;
+    private final double shardsGoal;
 
     public static final String WALLET_PARAM_STRING = "^[0-9a-zA-Z-_.]+$";
     public static final Pattern WALLET_PARAM_PATTERN = Pattern
             .compile(WALLET_PARAM_STRING);
-    
+
     private PropUtils() {
         initalSettings = getPropertyResource("initial_settings.properties");
         String property = initalSettings.getProperty("tkm.client.max-retries");
@@ -61,6 +64,9 @@ public class PropUtils {
         tokenServerWalletPass = initalSettings.getProperty("tkm.tokenserver.wallet.pass");
         tokenServerSecret = initalSettings.getProperty("tkm.server.secret");
         tokenServerDifficulty = initalSettings.getProperty("tkm.server.difficulty");
+        tkgReward = Double.parseDouble(initalSettings.getProperty("tkm.tkg.reward"));
+        tkrReward = Double.parseDouble(initalSettings.getProperty("tkm.tkr.reward"));
+        shardsGoal = Double.parseDouble(initalSettings.getProperty("tkm.shards.goal"));
     }
 
     private static final class PU {
@@ -71,35 +77,47 @@ public class PropUtils {
     public static PropUtils i() {
         return PU.P;
     }
-    
+
+    public double getShardsGoal() {
+        return shardsGoal;
+    }
+
+    public double getTkgReward() {
+        return tkgReward;
+    }
+
+    public double getTkrReward() {
+        return tkrReward;
+    }
+
     public String getCurrentApiBase() {
         return targetingProd ? prodApi : testApi;
     }
-    
+
     public String getCurrentApiBalanceOf() {
         return targetingProd ? prodBalanceOfApi : testBalanceOfApi;
     }
-    
+
     public String getTokenServerDifficulty() {
         return tokenServerDifficulty;
     }
-    
+
     public String getTokenServerSecret() {
         return tokenServerSecret;
     }
-    
+
     public String getTokenServerWalletName() {
         return tokenServerWalletName;
     }
-    
+
     public String getTokenServerWalletPass() {
         return tokenServerWalletPass;
     }
-    
+
     public String getTokenServerPassword() {
         return tokenServerPasswordTest;
     }
-    
+
     public String getTokenServerAddressReference() {
         return tokenServerAddressReference;
     }
@@ -110,7 +128,7 @@ public class PropUtils {
         Resource resource = resourceLoader.getResource(fileName);
         return asProperties(resource);
     }
-    
+
     public static Properties asProperties(Resource resource) {
         try ( Reader reader = new InputStreamReader(resource.getInputStream(), UTF_8)) {
             Properties prop = null;

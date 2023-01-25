@@ -4,11 +4,7 @@
  */
 package io.takamaka.collectTokenServer.handler;
 
-import com.h2tcoin.takamakachain.exceptions.threadSafeUtils.HashAlgorithmNotFoundException;
-import com.h2tcoin.takamakachain.exceptions.threadSafeUtils.HashEncodeException;
-import com.h2tcoin.takamakachain.exceptions.threadSafeUtils.HashProviderNotFoundException;
-import com.h2tcoin.takamakachain.utils.threadSafeUtils.TkmSignUtils;
-import com.h2tcoin.takamakachain.utils.threadSafeUtils.TkmTextUtils;
+
 import io.takamaka.collectTokenServer.PropUtils;
 import io.takamaka.collectTokenServer.SerialUtils;
 import io.takamaka.collectTokenServer.domain.ChallengeResponseBean;
@@ -16,6 +12,18 @@ import io.takamaka.collectTokenServer.domain.TokenCollected;
 import io.takamaka.collectTokenServer.repositories.TokenCollectedRepository;
 import io.takamaka.collectTokenServer.utils.ErrorMessageBean;
 import io.takamaka.collectTokenServer.utils.ProjectHelper;
+import io.takamaka.wallet.InstanceWalletKeyStoreBCED25519;
+import io.takamaka.wallet.InstanceWalletKeystoreInterface;
+import io.takamaka.wallet.beans.FeeBean;
+import io.takamaka.wallet.beans.InternalTransactionBean;
+import io.takamaka.wallet.beans.TransactionBean;
+import io.takamaka.wallet.beans.TransactionBox;
+import io.takamaka.wallet.exceptions.HashAlgorithmNotFoundException;
+import io.takamaka.wallet.exceptions.HashEncodeException;
+import io.takamaka.wallet.exceptions.HashProviderNotFoundException;
+import io.takamaka.wallet.exceptions.UnlockWalletException;
+import io.takamaka.wallet.exceptions.WalletException;
+import io.takamaka.wallet.utils.BuilderITB;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.security.NoSuchAlgorithmException;
@@ -32,8 +40,16 @@ import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
 import reactor.core.publisher.Mono;
 import io.takamaka.wallet.utils.FixedParameters;
+import io.takamaka.wallet.utils.TkmSignUtils;
+import io.takamaka.wallet.utils.TkmTK;
+import io.takamaka.wallet.utils.TkmTextUtils;
+import io.takamaka.wallet.utils.TkmWallet;
+import io.takamaka.wallet.utils.TransactionFeeCalculator;
+import java.io.IOException;
 import java.math.BigInteger;
+import java.net.ProtocolException;
 import java.security.NoSuchProviderException;
+import java.util.Date;
 
 /**
  *
@@ -45,7 +61,12 @@ import java.security.NoSuchProviderException;
 public class CollectTokenServerHandler {
 
     TokenCollectedRepository tokenCollectedRepository;
-
+    
+    public static final BigInteger oneTKRValue = TkmTK.unitTK(1);
+    public static final BigInteger oneTKGValue = TkmTK.unitTK(1);
+    public static final String SOURCE_WALLET_NAME = "my_example_wallet_source";
+    public static final String SOURCE_WALLET_PASSWORD = "my_example_wallet_source_password";
+    
     public Mono<ServerResponse> helloworld(ServerRequest serverRequest) {
         return ServerResponse.ok()
                 .contentType(MediaType.APPLICATION_JSON)
@@ -109,19 +130,63 @@ public class CollectTokenServerHandler {
             }
             
             return tokenCollectedRepository.getClamingSolutions(walletAddress).flatMap((numberOfSol) -> {
+                double tkrScale = PropUtils.i().getTkrReward();
+                double tkgScale = PropUtils.i().getTkgReward();
+                
+                double ratioShardCompleted = 
+                        numberOfSol.doubleValue() / 
+                        PropUtils.i().getShardsGoal();
+                
+                final BigInteger tkrAmount = oneTKRValue.multiply(new BigInteger(String.valueOf(tkrScale))).multiply(new BigInteger(String.valueOf(ratioShardCompleted)));
+                final BigInteger tkgAmount = oneTKGValue.multiply(new BigInteger(String.valueOf(tkgScale))).multiply(new BigInteger(String.valueOf(ratioShardCompleted)));
+                
+                try {
+                    doPay(
+                            trimWalletAddress,
+                            trimWalletAddress,
+                            PropUtils.i().getCurrentApiBase(),
+                            tkrAmount,
+                            tkgAmount
+                    );
+                } catch (UnlockWalletException ex) {
+                    Logger.getLogger(CollectTokenServerHandler.class.getName()).log(Level.SEVERE, null, ex);
+                } catch (WalletException | IOException ex) {
+                    Logger.getLogger(CollectTokenServerHandler.class.getName()).log(Level.SEVERE, null, ex);
+                }
                 
                 return ServerResponse.ok().bodyValue(numberOfSol.toString());
             });
         });
     }
     
-    public static final String doPay(
+    public static final void doPay(
             String fromAddress,
             String toAddress, 
             String networkTarget,
             BigInteger tkrAmount, 
-            BigInteger tkgAmount) {
-        return "";
+            BigInteger tkgAmount) throws UnlockWalletException, WalletException, ProtocolException, IOException {
+        final InstanceWalletKeystoreInterface iwkEDSource = new InstanceWalletKeyStoreBCED25519(SOURCE_WALLET_NAME, SOURCE_WALLET_PASSWORD);
+        final String publicKeySource = iwkEDSource.getPublicKeyAtIndexURL64(0);
+        final Date transactionInclusionTime = TkmTK.getTransactionTime();
+        InternalTransactionBean payITB = BuilderITB.pay(
+                publicKeySource, toAddress,
+                tkgAmount, tkrAmount,
+                "mining reward for " + toAddress,
+                transactionInclusionTime);
+        TransactionBean myPayObject
+                = TkmWallet.createGenericTransaction(
+                        payITB,
+                        iwkEDSource, // source wallet 
+                        0 // same wallet and KEY INDEX of publicKeySource
+                );
+        String payTransactionJson = TkmTextUtils.toJson(myPayObject);
+        TransactionBox payTbox = TkmWallet.verifyTransactionIntegrity(payTransactionJson);
+        FeeBean payFeeBean = TransactionFeeCalculator.getFeeBean(payTbox);
+        String payHexBody = TkmSignUtils.fromStringToHexString(payTransactionJson);
+        String payTxVerifyResult = ProjectHelper.doPost(
+                "https://dev.takamaka.io/api/V2/fastapi/verifytransaction", // main network verify endpoint (for verify main or test network is the same) 
+                "tx", //form var
+                payHexBody); //hex transaction
     }
 
     public Mono<ServerResponse> checkResult(ServerRequest serverRequest) {
