@@ -8,7 +8,6 @@ package io.takamaka.collectTokenServer.handler;
 import io.takamaka.collectTokenServer.PropUtils;
 import io.takamaka.collectTokenServer.SerialUtils;
 import io.takamaka.collectTokenServer.domain.ChallengeResponseBean;
-import io.takamaka.collectTokenServer.domain.TokenCollected;
 import io.takamaka.collectTokenServer.repositories.TokenCollectedRepository;
 import io.takamaka.collectTokenServer.utils.ErrorMessageBean;
 import io.takamaka.collectTokenServer.utils.ProjectHelper;
@@ -35,7 +34,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.util.MultiValueMap;
-import org.springframework.web.reactive.function.server.RouterFunctions;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
 import reactor.core.publisher.Mono;
@@ -61,9 +59,6 @@ import java.util.Date;
 public class CollectTokenServerHandler {
 
     TokenCollectedRepository tokenCollectedRepository;
-    
-    public static final BigInteger oneTKRValue = TkmTK.unitTK(1);
-    public static final BigInteger oneTKGValue = TkmTK.unitTK(1);
     public static final String SOURCE_WALLET_NAME = "my_example_wallet_source";
     public static final String SOURCE_WALLET_PASSWORD = "my_example_wallet_source_password";
     
@@ -106,6 +101,8 @@ public class CollectTokenServerHandler {
     
     public Mono<ServerResponse> checkClamingSolutions(ServerRequest serverRequest) {
         ErrorMessageBean errorMessageBean = new ErrorMessageBean();
+        final BigInteger oneTKRValue = TkmTK.unitTK(1);
+        final BigInteger oneTKGValue = TkmTK.unitTK(1);
         
         return serverRequest.bodyToMono(String.class).flatMap((flatBody) -> {
             if (TkmTextUtils.isNullOrBlank(flatBody)) {
@@ -137,8 +134,21 @@ public class CollectTokenServerHandler {
                         numberOfSol.doubleValue() / 
                         PropUtils.i().getShardsGoal();
                 
-                final BigInteger tkrAmount = oneTKRValue.multiply(new BigInteger(String.valueOf(tkrScale))).multiply(new BigInteger(String.valueOf(ratioShardCompleted)));
-                final BigInteger tkgAmount = oneTKGValue.multiply(new BigInteger(String.valueOf(tkgScale))).multiply(new BigInteger(String.valueOf(ratioShardCompleted)));
+                final BigInteger tkrAmount = oneTKRValue
+                        .multiply(
+                                new BigInteger(
+                                        String.valueOf(tkrScale)))
+                        .multiply(new BigInteger(
+                                String.valueOf(ratioShardCompleted))
+                        );
+                final BigInteger tkgAmount = oneTKGValue
+                        .multiply(
+                                new BigInteger(
+                                        String.valueOf(tkgScale)))
+                        .multiply(
+                                new BigInteger(
+                                        String.valueOf(ratioShardCompleted))
+                        );
                 
                 try {
                     doPay(
