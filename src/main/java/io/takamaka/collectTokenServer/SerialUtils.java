@@ -4,21 +4,14 @@
  */
 package io.takamaka.collectTokenServer;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.h2tcoin.takamaka.replica.data.TransactionCacheBean;
-import com.h2tcoin.takamakachain.db.embedded.balance.BalanceBean;
-import com.h2tcoin.takamakachain.utils.threadSafeUtils.TkmTextUtils;
 
 import io.takamaka.collectTokenServer.utils.ErrorMessageBean;
+import io.takamaka.wallet.utils.TkmTextUtils;
 import java.util.AbstractMap;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
@@ -33,51 +26,9 @@ public class SerialUtils {
     public static final TypeReference<MultiValueMap<String, String>> type_MultiValueMap_String_String = new TypeReference<MultiValueMap<String, String>>() {
     };
 
-    public static final TypeReference<List<TransactionCacheBean>> type_List_TransactionCacheBean = new TypeReference<List<TransactionCacheBean>>() {
-    };
-
     public static final TypeReference<List<String>> type_List_String = new TypeReference<List<String>>() {
     };
-    
-    
-    public static final TypeReference<BalanceBean> type_BalanceOfBean = new TypeReference<BalanceBean>() {
-    };
-    
 
-    public static final List<TransactionCacheBean> deserializeListTransactionCacheBean(String listTransactionCacheBeanJson, ErrorMessageBean errorMessageBean) {
-        try {
-            ObjectMapper m = new ObjectMapper();
-            return m.readValue(listTransactionCacheBeanJson, SerialUtils.type_List_TransactionCacheBean);
-        } catch (JsonProcessingException ex) {
-            errorMessageBean.getErrors().add(ex.getLocalizedMessage());
-            errorMessageBean.setT(ex);
-        }
-        return null;
-    }
-    
-    public static final BalanceBean deserializeBalanceBean(String bbJson, ErrorMessageBean errorMessageBean) {
-        try {
-            ObjectMapper m = new ObjectMapper();
-            return m.readValue(bbJson, SerialUtils.type_BalanceOfBean);
-        } catch (JsonProcessingException ex) {
-            errorMessageBean.getErrors().add(ex.getLocalizedMessage());
-            errorMessageBean.setT(ex);
-        }
-        return null;
-    }
-    
-    public static final String serializeListTransactionCacheBean(List<TransactionCacheBean> listTransactionCacheBean, ErrorMessageBean errorMessageBean) {
-        try {
-            ObjectMapper m = new ObjectMapper();
-            return m.writeValueAsString(listTransactionCacheBean);
-        } catch (JsonProcessingException ex) {
-            errorMessageBean.getErrors().add(ex.getLocalizedMessage());
-            errorMessageBean.setT(ex);
-        }
-        return null;
-    }
-    
-    
     public static final MultiValueMap<String, String> deepCopy(MultiValueMap<String, String> origMap, ErrorMessageBean errorMessageBean) {
         try {
             ObjectMapper m = new ObjectMapper();
