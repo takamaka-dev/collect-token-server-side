@@ -22,6 +22,7 @@ import io.takamaka.wallet.exceptions.HashProviderNotFoundException;
 import io.takamaka.wallet.exceptions.UnlockWalletException;
 import io.takamaka.wallet.exceptions.WalletException;
 import io.takamaka.wallet.utils.BuilderITB;
+import static io.takamaka.wallet.utils.DefaultInitParameters.NUMBER_OF_ZEROS;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.security.NoSuchAlgorithmException;
@@ -43,10 +44,12 @@ import io.takamaka.wallet.utils.TkmTextUtils;
 import io.takamaka.wallet.utils.TkmWallet;
 import io.takamaka.wallet.utils.TransactionFeeCalculator;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.ProtocolException;
 import java.security.NoSuchProviderException;
 import java.util.Date;
+import org.springframework.http.HttpStatus;
 
 /**
  *
@@ -92,47 +95,53 @@ public class CollectTokenServerHandler {
             }
 
             return tokenCollectedRepository.getClamingSolutions(walletAddress).flatMap((numberOfSol) -> {
-                double tkrScale = PropUtils.i().getTkrReward();
-                double tkgScale = PropUtils.i().getTkgReward();
-                BigInteger oneTKRValue = TkmTK.unitTK("1");
-                BigInteger oneTKGValue = TkmTK.unitTK("1");
+                BigDecimal tkrRewardBase = PropUtils.i().getTkrReward();
+                BigDecimal tkgRewardBase = PropUtils.i().getTkgReward();
+//                BigInteger oneTKRValue = TkmTK.unitTK("1");
+//                BigInteger oneTKGValue = TkmTK.unitTK("1");
 
                 double ratioShardCompleted
                         = numberOfSol.doubleValue()
                         / PropUtils.i().getShardsGoal();
 
-                final BigInteger tkrAmount = oneTKRValue
-                        .multiply(
-                                new BigInteger(
-                                        String.valueOf(tkrScale)))
-                        .multiply(new BigInteger(
-                                String.valueOf(ratioShardCompleted))
-                        );
-                final BigInteger tkgAmount = oneTKGValue
-                        .multiply(
-                                new BigInteger(
-                                        String.valueOf(tkgScale)))
-                        .multiply(
-                                new BigInteger(
-                                        String.valueOf(ratioShardCompleted))
-                        );
+                BigDecimal bdRatio = new BigDecimal(ratioShardCompleted);
+                BigDecimal tkrAmountBD = tkrRewardBase.multiply(bdRatio).multiply(new BigDecimal(BigInteger.TEN.pow(NUMBER_OF_ZEROS)));
+                BigDecimal tkgAmountBD = tkgRewardBase.multiply(bdRatio).multiply(new BigDecimal(BigInteger.TEN.pow(NUMBER_OF_ZEROS)));
+                BigInteger tkgAmountBI = tkgAmountBD.toBigInteger();
+                BigInteger tkrAmountBI = tkrAmountBD.toBigInteger();
+//                final BigInteger tkrAmount = oneTKRValue
+//                        .multiply(
+//                                new BigInteger(
+//                                        String.valueOf(tkrScale)))
+//                        .multiply(new BigInteger(
+//                                String.valueOf(ratioShardCompleted))
+//                        );
+//                final BigInteger tkgAmount = oneTKGValue
+//                        .multiply(
+//                                new BigInteger(
+//                                        String.valueOf(tkgScale)))
+//                        .multiply(
+//                                new BigInteger(
+//                                        String.valueOf(ratioShardCompleted))
+//                        );
 
                 try {
-                    doPay(
+                    String doPayResult = doPay(
                             trimWalletAddress,
                             trimWalletAddress,
                             PropUtils.i().getCurrentApiBase(),
-                            tkrAmount,
-                            tkgAmount
+                            tkgAmountBI,
+                            tkrAmountBI
                     );
+                    return tokenCollectedRepository.updateClamingSolutions(trimWalletAddress).flatMap((t) -> {
+                        return ServerResponse.ok().bodyValue(doPayResult);
+                    });
                 } catch (UnlockWalletException ex) {
                     Logger.getLogger(CollectTokenServerHandler.class.getName()).log(Level.SEVERE, null, ex);
                 } catch (WalletException | IOException ex) {
                     Logger.getLogger(CollectTokenServerHandler.class.getName()).log(Level.SEVERE, null, ex);
                 }
-                return tokenCollectedRepository.updateClamingSolutions(trimWalletAddress).flatMap((t) -> {
-                    return ServerResponse.ok().bodyValue("OK");
-                });
+                return ServerResponse.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
             });
 
         });
@@ -169,7 +178,7 @@ public class CollectTokenServerHandler {
         });
     }
 
-    public static final void doPay(
+    public static final String doPay(
             String fromAddress,
             String toAddress,
             String networkTarget,
@@ -197,6 +206,7 @@ public class CollectTokenServerHandler {
                 "https://dev.takamaka.io/api/V2/fastapi/verifytransaction", // main network verify endpoint (for verify main or test network is the same) 
                 "tx", //form var
                 payHexBody); //hex transaction
+        return payTxVerifyResult;
     }
 
     public Mono<ServerResponse> checkResult(ServerRequest serverRequest) {
