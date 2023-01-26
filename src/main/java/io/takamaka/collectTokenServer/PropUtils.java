@@ -8,6 +8,8 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.io.UncheckedIOException;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import java.util.Properties;
 import java.util.regex.Pattern;
@@ -39,8 +41,8 @@ public class PropUtils {
     private final Properties initalSettings;
     private final String tokenServerSecret;
     private final String tokenServerDifficulty;
-    private final double tkrReward;
-    private final double tkgReward;
+    private final BigDecimal tkrReward;
+    private final BigDecimal tkgReward;
     private final double shardsGoal;
 
     public static final String WALLET_PARAM_STRING = "^[0-9a-zA-Z-_.]+$";
@@ -64,8 +66,8 @@ public class PropUtils {
         tokenServerWalletPass = initalSettings.getProperty("tkm.tokenserver.wallet.pass");
         tokenServerSecret = initalSettings.getProperty("tkm.server.secret");
         tokenServerDifficulty = initalSettings.getProperty("tkm.server.difficulty");
-        tkgReward = Double.parseDouble(initalSettings.getProperty("tkm.tkg.reward"));
-        tkrReward = Double.parseDouble(initalSettings.getProperty("tkm.tkr.reward"));
+        tkgReward = new BigDecimal(initalSettings.getProperty("tkm.tkg.reward"));
+        tkrReward = new BigDecimal(initalSettings.getProperty("tkm.tkr.reward"));
         shardsGoal = Double.parseDouble(initalSettings.getProperty("tkm.shards.goal"));
     }
 
@@ -82,11 +84,11 @@ public class PropUtils {
         return shardsGoal;
     }
 
-    public double getTkgReward() {
+    public BigDecimal getTkgReward() {
         return tkgReward;
     }
 
-    public double getTkrReward() {
+    public BigDecimal getTkrReward() {
         return tkrReward;
     }
 
