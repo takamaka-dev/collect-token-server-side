@@ -70,6 +70,39 @@ public class CollectTokenServerHandler {
                 .bodyValue("Hello world!");
     }
 
+    public static void test() {
+//        BigDecimal tkrRewardBase = PropUtils.i().getTkrReward();
+//                BigDecimal tkgRewardBase = PropUtils.i().getTkgReward();
+//
+//                double ratioShardCompleted
+//                        = numberOfSol.doubleValue()
+//                        / PropUtils.i().getShardsGoal();
+//
+//                BigDecimal bdRatio = new BigDecimal(ratioShardCompleted);
+//                BigDecimal tkrAmountBD = tkrRewardBase.multiply(bdRatio).multiply(new BigDecimal(BigInteger.TEN.pow(NUMBER_OF_ZEROS)));
+//                BigDecimal tkgAmountBD = tkgRewardBase.multiply(bdRatio).multiply(new BigDecimal(BigInteger.TEN.pow(NUMBER_OF_ZEROS)));
+//                BigInteger tkgAmountBI = tkgAmountBD.toBigInteger();
+//                BigInteger tkrAmountBI = tkrAmountBD.toBigInteger();
+//
+//                try {
+//                    String doPayResult = doPay(
+//                            trimWalletAddress,
+//                            trimWalletAddress,
+//                            PropUtils.i().getCurrentApiBase(),
+//                            tkgAmountBI,
+//                            tkrAmountBI
+//                    );
+//                    return tokenCollectedRepository.updateClamingSolutions(trimWalletAddress).flatMap((t) -> {
+//                        return ServerResponse.ok().bodyValue(doPayResult);
+//                    });
+//                } catch (UnlockWalletException ex) {
+//                    Logger.getLogger(CollectTokenServerHandler.class.getName()).log(Level.SEVERE, null, ex);
+//                } catch (WalletException | IOException ex) {
+//                    Logger.getLogger(CollectTokenServerHandler.class.getName()).log(Level.SEVERE, null, ex);
+//                }
+//                return ServerResponse.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+    }
+
     public Mono<ServerResponse> claimSolutions(ServerRequest serverRequest) {
         ErrorMessageBean errorMessageBean = new ErrorMessageBean();
         return serverRequest.bodyToMono(String.class).flatMap((flatBody) -> {
@@ -93,57 +126,28 @@ public class CollectTokenServerHandler {
                 errorMessageBean.getErrors().add("wrong format wallet address");
                 log.info("wrong format wallet address");
             }
-
-            return tokenCollectedRepository.getClamingSolutions(walletAddress).flatMap((numberOfSol) -> {
-                BigDecimal tkrRewardBase = PropUtils.i().getTkrReward();
-                BigDecimal tkgRewardBase = PropUtils.i().getTkgReward();
-//                BigInteger oneTKRValue = TkmTK.unitTK("1");
-//                BigInteger oneTKGValue = TkmTK.unitTK("1");
-
-                double ratioShardCompleted
-                        = numberOfSol.doubleValue()
-                        / PropUtils.i().getShardsGoal();
-
-                BigDecimal bdRatio = new BigDecimal(ratioShardCompleted);
-                BigDecimal tkrAmountBD = tkrRewardBase.multiply(bdRatio).multiply(new BigDecimal(BigInteger.TEN.pow(NUMBER_OF_ZEROS)));
-                BigDecimal tkgAmountBD = tkgRewardBase.multiply(bdRatio).multiply(new BigDecimal(BigInteger.TEN.pow(NUMBER_OF_ZEROS)));
-                BigInteger tkgAmountBI = tkgAmountBD.toBigInteger();
-                BigInteger tkrAmountBI = tkrAmountBD.toBigInteger();
-//                final BigInteger tkrAmount = oneTKRValue
-//                        .multiply(
-//                                new BigInteger(
-//                                        String.valueOf(tkrScale)))
-//                        .multiply(new BigInteger(
-//                                String.valueOf(ratioShardCompleted))
-//                        );
-//                final BigInteger tkgAmount = oneTKGValue
-//                        .multiply(
-//                                new BigInteger(
-//                                        String.valueOf(tkgScale)))
-//                        .multiply(
-//                                new BigInteger(
-//                                        String.valueOf(ratioShardCompleted))
-//                        );
-
-                try {
-                    String doPayResult = doPay(
-                            trimWalletAddress,
-                            trimWalletAddress,
-                            PropUtils.i().getCurrentApiBase(),
-                            tkgAmountBI,
-                            tkrAmountBI
-                    );
-                    return tokenCollectedRepository.updateClamingSolutions(trimWalletAddress).flatMap((t) -> {
-                        return ServerResponse.ok().bodyValue(doPayResult);
-                    });
-                } catch (UnlockWalletException ex) {
-                    Logger.getLogger(CollectTokenServerHandler.class.getName()).log(Level.SEVERE, null, ex);
-                } catch (WalletException | IOException ex) {
-                    Logger.getLogger(CollectTokenServerHandler.class.getName()).log(Level.SEVERE, null, ex);
-                }
-                return ServerResponse.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            return tokenCollectedRepository.updateClamingSolutions(trimWalletAddress).flatMap((t) -> {
+                return ServerResponse.ok().bodyValue("OK");
             });
 
+//            return tokenCollectedRepository.getClamingSolutions(walletAddress).flatMap((numberOfSol) -> {
+//                
+//                try {
+//                    String doPayResult = doPay(
+//                            trimWalletAddress,
+//                            trimWalletAddress,
+//                            PropUtils.i().getCurrentApiBase(),
+//                            tkgAmountBI,
+//                            tkrAmountBI
+//                    );
+//                    
+//                } catch (UnlockWalletException ex) {
+//                    Logger.getLogger(CollectTokenServerHandler.class.getName()).log(Level.SEVERE, null, ex);
+//                } catch (WalletException | IOException ex) {
+//                    Logger.getLogger(CollectTokenServerHandler.class.getName()).log(Level.SEVERE, null, ex);
+//                }
+//                return ServerResponse.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+//            });
         });
     }
 
