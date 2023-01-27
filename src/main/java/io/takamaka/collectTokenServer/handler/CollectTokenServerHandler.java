@@ -7,6 +7,8 @@ package io.takamaka.collectTokenServer.handler;
 import io.takamaka.collectTokenServer.PropUtils;
 import io.takamaka.collectTokenServer.SerialUtils;
 import io.takamaka.collectTokenServer.domain.ChallengeResponseBean;
+import io.takamaka.collectTokenServer.domain.PayToDo;
+import io.takamaka.collectTokenServer.repositories.PayToDoRepository;
 import io.takamaka.collectTokenServer.repositories.TokenCollectedRepository;
 import io.takamaka.collectTokenServer.utils.ErrorMessageBean;
 import io.takamaka.collectTokenServer.utils.ProjectHelper;
@@ -48,8 +50,11 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.ProtocolException;
 import java.security.NoSuchProviderException;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.List;
 import org.springframework.http.HttpStatus;
+import reactor.core.publisher.Flux;
 
 /**
  *
@@ -61,6 +66,7 @@ import org.springframework.http.HttpStatus;
 public class CollectTokenServerHandler {
 
     TokenCollectedRepository tokenCollectedRepository;
+    PayToDoRepository payToDoRepository;
     public static final String SOURCE_WALLET_NAME = "my_example_wallet_source";
     public static final String SOURCE_WALLET_PASSWORD = "my_example_wallet_source_password";
 
@@ -70,40 +76,27 @@ public class CollectTokenServerHandler {
                 .bodyValue("Hello world!");
     }
 
-    public static void test() {
-//        BigDecimal tkrRewardBase = PropUtils.i().getTkrReward();
-//                BigDecimal tkgRewardBase = PropUtils.i().getTkgReward();
-//
-//                double ratioShardCompleted
-//                        = numberOfSol.doubleValue()
-//                        / PropUtils.i().getShardsGoal();
-//
-//                BigDecimal bdRatio = new BigDecimal(ratioShardCompleted);
-//                BigDecimal tkrAmountBD = tkrRewardBase.multiply(bdRatio).multiply(new BigDecimal(BigInteger.TEN.pow(NUMBER_OF_ZEROS)));
-//                BigDecimal tkgAmountBD = tkgRewardBase.multiply(bdRatio).multiply(new BigDecimal(BigInteger.TEN.pow(NUMBER_OF_ZEROS)));
-//                BigInteger tkgAmountBI = tkgAmountBD.toBigInteger();
-//                BigInteger tkrAmountBI = tkrAmountBD.toBigInteger();
-//
-//                try {
-//                    String doPayResult = doPay(
-//                            trimWalletAddress,
-//                            trimWalletAddress,
-//                            PropUtils.i().getCurrentApiBase(),
-//                            tkgAmountBI,
-//                            tkrAmountBI
-//                    );
-//                    return tokenCollectedRepository.updateClamingSolutions(trimWalletAddress).flatMap((t) -> {
-//                        return ServerResponse.ok().bodyValue(doPayResult);
-//                    });
-//                } catch (UnlockWalletException ex) {
-//                    Logger.getLogger(CollectTokenServerHandler.class.getName()).log(Level.SEVERE, null, ex);
-//                } catch (WalletException | IOException ex) {
-//                    Logger.getLogger(CollectTokenServerHandler.class.getName()).log(Level.SEVERE, null, ex);
-//                }
-//                return ServerResponse.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+    public Mono<ServerResponse> doPendingPay(ServerRequest serverRequest) {
+
+        return payToDoRepository.getAllPayToDo().flatMap((singlePayToDo) -> {
+            try {
+                ProjectHelper.doPost(
+                        PropUtils.i().getCurrentApiBase() + "/transaction", // main network verify endpoint (for verify main or test network is the same)
+                        "tx", //form var
+                        singlePayToDo.getHexTrx());
+            } catch (ProtocolException ex) {
+                Logger.getLogger(CollectTokenServerHandler.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (IOException ex) {
+                Logger.getLogger(CollectTokenServerHandler.class.getName()).log(Level.SEVERE, null, ex);
+            }
+            return payToDoRepository.removePayToDoRows(Integer.valueOf(singlePayToDo.getId()));
+        }).collectList().flatMap((collectedList) -> {
+            return ServerResponse.ok().bodyValue("OK");
+        });
+
     }
 
-    public Mono<ServerResponse> claimSolutions(ServerRequest serverRequest) {
+    public Mono<ServerResponse> getHexTrx(ServerRequest serverRequest) {
         ErrorMessageBean errorMessageBean = new ErrorMessageBean();
         return serverRequest.bodyToMono(String.class).flatMap((flatBody) -> {
             if (TkmTextUtils.isNullOrBlank(flatBody)) {
@@ -126,29 +119,107 @@ public class CollectTokenServerHandler {
                 errorMessageBean.getErrors().add("wrong format wallet address");
                 log.info("wrong format wallet address");
             }
+
+            return tokenCollectedRepository.getClamingSolutions(walletAddress).flatMap((numberOfSol) -> {
+
+                BigDecimal tkrRewardBase = PropUtils.i().getTkrReward();
+                BigDecimal tkgRewardBase = PropUtils.i().getTkgReward();
+
+                double ratioShardCompleted
+                        = numberOfSol.doubleValue()
+                        / PropUtils.i().getShardsGoal();
+
+                BigDecimal bdRatio = new BigDecimal(ratioShardCompleted);
+                BigDecimal tkrAmountBD = tkrRewardBase.multiply(bdRatio).multiply(new BigDecimal(BigInteger.TEN.pow(NUMBER_OF_ZEROS)));
+                BigDecimal tkgAmountBD = tkgRewardBase.multiply(bdRatio).multiply(new BigDecimal(BigInteger.TEN.pow(NUMBER_OF_ZEROS)));
+                BigInteger tkgAmountBI = tkgAmountBD.toBigInteger();
+                BigInteger tkrAmountBI = tkrAmountBD.toBigInteger();
+
+                try {
+                    String doPayResultHex = doPay(
+                            trimWalletAddress,
+                            trimWalletAddress,
+                            PropUtils.i().getCurrentApiBase(),
+                            tkrAmountBI,
+                            tkgAmountBI
+                    );
+
+                    return ServerResponse.ok().bodyValue(doPayResultHex);
+                } catch (WalletException | IOException ex) {
+                    Logger.getLogger(CollectTokenServerHandler.class.getName()).log(Level.SEVERE, null, ex);
+                }
+
+                return ServerResponse.ok().bodyValue(numberOfSol.toString());
+            });
+
+        });
+    }
+
+    public Mono<ServerResponse> updateClamingSolutions(ServerRequest serverRequest) {
+
+        ErrorMessageBean errorMessageBean = new ErrorMessageBean();
+
+        return serverRequest.bodyToMono(String.class).flatMap((flatBody) -> {
+            if (TkmTextUtils.isNullOrBlank(flatBody)) {
+                log.info("null body");
+            }
+            String trimmedFlatReq = flatBody.trim();
+            if (trimmedFlatReq.contains("\u0000")) {
+                log.info("found null character, exiting...");
+                errorMessageBean.getErrors().add("found null character, exiting...");
+            }
+            log.info("the request " + trimmedFlatReq);
+            MultiValueMap<String, String> resMap = SerialUtils.parseBody(flatBody, errorMessageBean);
+
+            String walletAddress = resMap.getFirst("walletAddress");
+
+            final String trimWalletAddress = walletAddress.trim();
+            if (PropUtils.WALLET_PARAM_PATTERN.matcher(trimWalletAddress).find()) {
+                walletAddress = trimWalletAddress;
+            } else {
+                errorMessageBean.getErrors().add("wrong format wallet address");
+                log.info("wrong format wallet address");
+            }
+
             return tokenCollectedRepository.updateClamingSolutions(trimWalletAddress).flatMap((t) -> {
                 return ServerResponse.ok().bodyValue("OK");
             });
-
-//            return tokenCollectedRepository.getClamingSolutions(walletAddress).flatMap((numberOfSol) -> {
-//                
-//                try {
-//                    String doPayResult = doPay(
-//                            trimWalletAddress,
-//                            trimWalletAddress,
-//                            PropUtils.i().getCurrentApiBase(),
-//                            tkgAmountBI,
-//                            tkrAmountBI
-//                    );
-//                    
-//                } catch (UnlockWalletException ex) {
-//                    Logger.getLogger(CollectTokenServerHandler.class.getName()).log(Level.SEVERE, null, ex);
-//                } catch (WalletException | IOException ex) {
-//                    Logger.getLogger(CollectTokenServerHandler.class.getName()).log(Level.SEVERE, null, ex);
-//                }
-//                return ServerResponse.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-//            });
         });
+    }
+
+    public Mono<ServerResponse> savePayToDo(ServerRequest serverRequest) {
+
+        ErrorMessageBean errorMessageBean = new ErrorMessageBean();
+
+        return serverRequest.bodyToMono(String.class).flatMap((flatBody) -> {
+            if (TkmTextUtils.isNullOrBlank(flatBody)) {
+                log.info("null body");
+            }
+            String trimmedFlatReq = flatBody.trim();
+            if (trimmedFlatReq.contains("\u0000")) {
+                log.info("found null character, exiting...");
+                errorMessageBean.getErrors().add("found null character, exiting...");
+            }
+            log.info("the request " + trimmedFlatReq);
+            MultiValueMap<String, String> resMap = SerialUtils.parseBody(flatBody, errorMessageBean);
+
+            String walletAddress = resMap.getFirst("walletAddress");
+
+            String doPayResultHex = resMap.getFirst("hex");
+
+            final String trimWalletAddress = walletAddress.trim();
+            if (PropUtils.WALLET_PARAM_PATTERN.matcher(trimWalletAddress).find()) {
+                walletAddress = trimWalletAddress;
+            } else {
+                errorMessageBean.getErrors().add("wrong format wallet address");
+                log.info("wrong format wallet address");
+            }
+
+            return payToDoRepository.savePayToDo(trimWalletAddress, doPayResultHex).flatMap((result) -> {
+                return ServerResponse.ok().bodyValue(result.getWalletAddress());
+            });
+        });
+
     }
 
     public Mono<ServerResponse> checkClamingSolutions(ServerRequest serverRequest) {
@@ -204,13 +275,12 @@ public class CollectTokenServerHandler {
                 );
         String payTransactionJson = TkmTextUtils.toJson(myPayObject);
         TransactionBox payTbox = TkmWallet.verifyTransactionIntegrity(payTransactionJson);
-        FeeBean payFeeBean = TransactionFeeCalculator.getFeeBean(payTbox);
         String payHexBody = TkmSignUtils.fromStringToHexString(payTransactionJson);
-        String payTxVerifyResult = ProjectHelper.doPost(
-                "https://dev.takamaka.io/api/V2/fastapi/verifytransaction", // main network verify endpoint (for verify main or test network is the same) 
-                "tx", //form var
-                payHexBody); //hex transaction
-        return payTxVerifyResult;
+//        String payTxVerifyResult = ProjectHelper.doPost(
+//                "https://dev.takamaka.io/api/V2/fastapi/verifytransaction", // main network verify endpoint (for verify main or test network is the same) 
+//                "tx", //form var
+//                payHexBody); //hex transaction
+        return payHexBody;
     }
 
     public Mono<ServerResponse> checkResult(ServerRequest serverRequest) {

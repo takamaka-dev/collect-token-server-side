@@ -43,12 +43,12 @@ public class CollectTokenServerRouter {
     }
     
     @Bean
-    public RouterFunction<ServerResponse> claimSolutions(CollectTokenServerHandler collectTokenHandler) {
+    public RouterFunction<ServerResponse> getHexTrx(CollectTokenServerHandler collectTokenHandler) {
         return route()
-                .nest(path("/claimsolutions"),
+                .nest(path("/gethextrx"),
                         (builder) -> {
                             builder
-                                    .POST("", (request) -> collectTokenHandler.claimSolutions(request));
+                                    .POST("", (request) -> collectTokenHandler.getHexTrx(request));
                         }).build();
 
     }
@@ -75,4 +75,38 @@ public class CollectTokenServerRouter {
                         }).build();
 
     }
+    
+    @Bean
+    public RouterFunction<ServerResponse> doPendingPay(CollectTokenServerHandler collectTokenHandler) {
+        return route()
+                .nest(path("/dopendingpay"),
+                        (builder) -> {
+                            builder
+                                    .POST("", (request) -> collectTokenHandler.doPendingPay(request));
+                        }).build();
+
+    }
+    
+    @Bean
+    public RouterFunction<ServerResponse> savePayToDo(CollectTokenServerHandler collectTokenHandler) {
+        return route()
+                .nest(path("/savepaytodo"),
+                        (builder) -> {
+                            builder
+                                    .POST("", (request) -> collectTokenHandler.savePayToDo(request));
+                        }).build();
+
+    }
+    
+    @Bean
+    public RouterFunction<ServerResponse> updateClamingSolutions(CollectTokenServerHandler collectTokenHandler) {
+        return route()
+                .nest(path("/updateclaimsolutions"),
+                        (builder) -> {
+                            builder
+                                    .POST("", (request) -> collectTokenHandler.updateClamingSolutions(request));
+                        }).build();
+
+    }
+    
 }

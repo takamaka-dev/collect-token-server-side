@@ -33,7 +33,10 @@ public class SecurityConfig {
                         "/requirechallenge",
                         "/checkresult",
                         "/checkclamingsolutions",
-                        "/claimsolutions"
+                        "/updateclaimsolutions",
+                        "/dopendingpay",
+                        "/savepaytodo",
+                        "/gethextrx"
                 )
                 .permitAll()
                 .and().csrf((csrf) -> csrf.disable())
