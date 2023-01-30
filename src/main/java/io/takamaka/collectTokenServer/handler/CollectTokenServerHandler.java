@@ -8,6 +8,7 @@ import io.takamaka.collectTokenServer.PropUtils;
 import io.takamaka.collectTokenServer.SerialUtils;
 import io.takamaka.collectTokenServer.domain.ChallengeResponseBean;
 import io.takamaka.collectTokenServer.domain.PayToDo;
+import io.takamaka.collectTokenServer.domain.PayTrxResponseBean;
 import io.takamaka.collectTokenServer.repositories.PayToDoRepository;
 import io.takamaka.collectTokenServer.repositories.TokenCollectedRepository;
 import io.takamaka.collectTokenServer.utils.ErrorMessageBean;
@@ -136,7 +137,7 @@ public class CollectTokenServerHandler {
                 BigInteger tkrAmountBI = tkrAmountBD.toBigInteger();
 
                 try {
-                    String doPayResultHex = doPay(
+                    PayTrxResponseBean doPayResultHex = doPay(
                             trimWalletAddress,
                             trimWalletAddress,
                             PropUtils.i().getCurrentApiBase(),
@@ -253,7 +254,7 @@ public class CollectTokenServerHandler {
         });
     }
 
-    public static final String doPay(
+    public static final PayTrxResponseBean doPay(
             String fromAddress,
             String toAddress,
             String networkTarget,
@@ -274,8 +275,13 @@ public class CollectTokenServerHandler {
                         0 // same wallet and KEY INDEX of publicKeySource
                 );
         String payTransactionJson = TkmTextUtils.toJson(myPayObject);
+        TransactionBox payTbox = TkmWallet.verifyTransactionIntegrity(payTransactionJson);
+        String transactionHash = payTbox.getItb().getTransactionHash();
         String payHexBody = TkmSignUtils.fromStringToHexString(payTransactionJson);
-        return payHexBody;
+        
+        PayTrxResponseBean payTrxResponseBean = new PayTrxResponseBean(payHexBody, transactionHash);
+        
+        return payTrxResponseBean;
     }
 
     public Mono<ServerResponse> checkResult(ServerRequest serverRequest) {
