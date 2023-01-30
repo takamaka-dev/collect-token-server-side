@@ -274,12 +274,7 @@ public class CollectTokenServerHandler {
                         0 // same wallet and KEY INDEX of publicKeySource
                 );
         String payTransactionJson = TkmTextUtils.toJson(myPayObject);
-        TransactionBox payTbox = TkmWallet.verifyTransactionIntegrity(payTransactionJson);
         String payHexBody = TkmSignUtils.fromStringToHexString(payTransactionJson);
-//        String payTxVerifyResult = ProjectHelper.doPost(
-//                "https://dev.takamaka.io/api/V2/fastapi/verifytransaction", // main network verify endpoint (for verify main or test network is the same) 
-//                "tx", //form var
-//                payHexBody); //hex transaction
         return payHexBody;
     }
 
