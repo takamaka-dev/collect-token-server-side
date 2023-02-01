@@ -43,7 +43,6 @@ public class PropUtils {
     private final BigDecimal tkrReward;
     private final BigDecimal tkgReward;
     private final double shardsGoal;
-    private final int fixedRateScheduled; 
 
     public static final String WALLET_PARAM_STRING = "^[0-9a-zA-Z-_.]+$";
     public static final Pattern WALLET_PARAM_PATTERN = Pattern
@@ -69,7 +68,6 @@ public class PropUtils {
         tkgReward = new BigDecimal(initalSettings.getProperty("tkm.tkg.reward"));
         tkrReward = new BigDecimal(initalSettings.getProperty("tkm.tkr.reward"));
         shardsGoal = Double.parseDouble(initalSettings.getProperty("tkm.shards.goal"));
-        fixedRateScheduled = Integer.parseInt(initalSettings.getProperty("tkm.server.dixed-scheduled-rate"));
     }
 
     private static final class PU {

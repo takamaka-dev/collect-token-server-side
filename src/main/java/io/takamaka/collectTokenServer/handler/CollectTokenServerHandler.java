@@ -50,7 +50,7 @@ import java.net.ProtocolException;
 import java.security.NoSuchProviderException;
 import java.util.Date;
 import org.springframework.http.HttpStatus;
-import org.springframework.scheduling.annotation.Scheduled;
+//import org.springframework.scheduling.annotation.Scheduled;
 
 /**
  *
@@ -72,7 +72,7 @@ public class CollectTokenServerHandler {
                 .bodyValue("Hello world!");
     }
     
-    @Scheduled(fixedRateString = "${tkm.server.fixed-scheduled-rate}", initialDelay = 10000)
+//    @Scheduled(fixedRateString = "${tkm.server.fixed-scheduled-rate}", initialDelay = 10000)
     public Mono<ServerResponse> doPendingPay(ServerRequest serverRequest) {
 
         return payToDoRepository.getAllPayToDo().flatMap((singlePayToDo) -> {
