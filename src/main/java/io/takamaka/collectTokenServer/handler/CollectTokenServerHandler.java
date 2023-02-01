@@ -7,7 +7,6 @@ package io.takamaka.collectTokenServer.handler;
 import io.takamaka.collectTokenServer.PropUtils;
 import io.takamaka.collectTokenServer.SerialUtils;
 import io.takamaka.collectTokenServer.domain.ChallengeResponseBean;
-import io.takamaka.collectTokenServer.domain.PayToDo;
 import io.takamaka.collectTokenServer.domain.PayTrxResponseBean;
 import io.takamaka.collectTokenServer.repositories.PayToDoRepository;
 import io.takamaka.collectTokenServer.repositories.TokenCollectedRepository;
@@ -15,7 +14,6 @@ import io.takamaka.collectTokenServer.utils.ErrorMessageBean;
 import io.takamaka.collectTokenServer.utils.ProjectHelper;
 import io.takamaka.wallet.InstanceWalletKeyStoreBCED25519;
 import io.takamaka.wallet.InstanceWalletKeystoreInterface;
-import io.takamaka.wallet.beans.FeeBean;
 import io.takamaka.wallet.beans.InternalTransactionBean;
 import io.takamaka.wallet.beans.TransactionBean;
 import io.takamaka.wallet.beans.TransactionBox;
@@ -45,17 +43,13 @@ import io.takamaka.wallet.utils.TkmSignUtils;
 import io.takamaka.wallet.utils.TkmTK;
 import io.takamaka.wallet.utils.TkmTextUtils;
 import io.takamaka.wallet.utils.TkmWallet;
-import io.takamaka.wallet.utils.TransactionFeeCalculator;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.ProtocolException;
 import java.security.NoSuchProviderException;
-import java.util.Arrays;
 import java.util.Date;
-import java.util.List;
 import org.springframework.http.HttpStatus;
-import reactor.core.publisher.Flux;
 
 /**
  *
@@ -122,7 +116,11 @@ public class CollectTokenServerHandler {
             }
 
             return tokenCollectedRepository.getClamingSolutions(walletAddress).flatMap((numberOfSol) -> {
-
+                
+                if (numberOfSol == 0) {
+                    return ServerResponse.status(HttpStatus.BAD_REQUEST).bodyValue("You do not have solutions to claim!");
+                }
+                
                 BigDecimal tkrRewardBase = PropUtils.i().getTkrReward();
                 BigDecimal tkgRewardBase = PropUtils.i().getTkgReward();
 
@@ -151,7 +149,7 @@ public class CollectTokenServerHandler {
                 }
 
                 return ServerResponse.ok().bodyValue(numberOfSol.toString());
-            });
+            }).switchIfEmpty(ServerResponse.status(HttpStatus.BAD_REQUEST).bodyValue("You do not have solutions to claim!"));
 
         });
     }
