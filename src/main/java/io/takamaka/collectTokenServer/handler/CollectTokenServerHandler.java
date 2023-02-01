@@ -55,6 +55,7 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import org.springframework.http.HttpStatus;
+import org.springframework.scheduling.annotation.Scheduled;
 import reactor.core.publisher.Flux;
 
 /**
@@ -76,7 +77,8 @@ public class CollectTokenServerHandler {
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue("Hello world!");
     }
-
+    
+    @Scheduled(fixedRateString = "${tkm.server.fixed-scheduled-rate}", initialDelay = 10000)
     public Mono<ServerResponse> doPendingPay(ServerRequest serverRequest) {
 
         return payToDoRepository.getAllPayToDo().flatMap((singlePayToDo) -> {
